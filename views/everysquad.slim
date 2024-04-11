@@ -1,6 +1,11 @@
 h1 All squads 
 
-ol
-  - squads.each do |squad|
-    li 
-        p  #{squad["team_name"]}
+ul
+  - @squads.each do |squad|
+    dl 
+        h2  #{squad["team_name"]}
+        - @players.each do |player|
+            p #{player["player_name"]} #{player["player_position"]}
+
+
+

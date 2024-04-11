@@ -60,8 +60,11 @@ end
 get('/everysquad') do 
   db = SQLite3::Database.new("db/oversikt.db")
   db.results_as_hash = true
-  result = db.execute("SELECT * FROM teams")
-  slim(:everysquad, locals:{squad:result})
+  @squads = db.execute("SELECT * FROM teams")
+  @squads.each do |squad|
+    @players = db.execute("SELECT playerstable.player_name, playerstable.player_position FROM playerstable INNER JOIN player_team_rel ON playerstable.playerid = player_team_rel.player_id WHERE player_team_rel.team_id = ?", squad["id"])
+  end
+  slim(:everysquad)
 end
 
 get('/showlogin') do
