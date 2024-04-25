@@ -12,7 +12,19 @@ html lang="en"
       nav
         h1 SQUAD BUILDER
 
+      - if session[:id]   
+        a href="/squad" Skapa ditt lag!
+        a href="/playersss" Skapa spelare!!!
+        a href="/everyplayer" Se alla spelare
+        a href="/everysquad" Se dina skapade lag
+        a href="/logout" Logout
+      
+      -else
         a href="/" Register
         a href="/showlogin" Login
+
+
+
+      
 
       == yield
