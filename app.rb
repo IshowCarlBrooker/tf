@@ -23,9 +23,22 @@ post('/squad') do
   db.results_as_hash = true 
   user_id = session[:id]
   team_name = params[:team_name]
+
+  # Hämta valda spelare för varje position från params
+  selected_players = (1..11).map { |i| params[:"playerr#{i}"] }
+
+  # Kontrollera om det finns dubbletter i listan över valda spelare
+  if selected_players.uniq.length != selected_players.length
+    flash[:notice] = "Du har valt samma spelare för flera positioner!"
+    redirect('/squad')
+  end
+
+  # Om inga dubbletter finns, fortsätt med att spara laget i databasen
   if db.execute("SELECT id FROM teams WHERE team_name = ? AND user_id = ?", team_name, user_id) == []
     db.execute("INSERT INTO teams (team_name, user_id) VALUES (?, ?)", team_name, user_id)
   end
+  
+  # Lägg till spelarna i laget i databasen
   i = 1
   while i <= 11 do
     player = params[:"playerr#{i}"]
@@ -34,6 +47,8 @@ post('/squad') do
     db.execute("INSERT INTO player_team_rel (player_id, team_id) VALUES (?,?)", player_id, team_id)
     i += 1
   end
+  
+  # Efter att laget och spelarna har lagts till i databasen, omdirigera till huvudsidan
   redirect('/huvudsida')
 end
 
@@ -68,6 +83,30 @@ get('/everysquad') do
   end
   slim(:everysquad)
 end
+
+post('/squads/:id/delete') do
+  id = params[:id].to_i
+  db = SQLite3::Database.new("db/oversikt.db")
+  db.execute("DELETE FROM teams WHERE id = ?",id)
+  redirect('/everysquad')
+end
+
+
+post('/squads/:id/update') do
+  squad_id = params[:id].to_i
+  db = SQLite3::Database.new("db/oversikt.db")
+  db.results_as_hash = true
+  i = 1
+  while i <= 11 do
+    player = params[:"playerr#{i}"]
+    player_id = db.execute("SELECT playerid FROM playerstable WHERE player_name = ?", player).first["playerid"]
+    db.execute("UPDATE player_team_rel SET player_id = ? WHERE team_id = ? AND position = ?", player_id, squad_id, i)
+    i += 1
+  end
+  redirect('/everysquad')
+end
+
+
 
 get('/showlogin') do
   slim(:login)

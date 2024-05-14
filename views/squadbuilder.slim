@@ -23,7 +23,7 @@ form action="/squad" method="post"
     p Centerback
     select name="playerr4"
         - @players.each do |player|
-            -if player["player_position"] == "CB"
+            -if player["player_position"] == "CB" 
                 option value="#{player["player_name"]}" selected="selected" #{player["player_name"]} 
     
     p Rightback
@@ -48,13 +48,13 @@ form action="/squad" method="post"
     p Center Midfielder
     select name="playerr8"
         - @players.each do |player|
-            -if player["player_position"] == "CM"
+            -if player["player_position"] == "CM" 
                 option value="#{player["player_name"]}" selected="selected" #{player["player_name"]} 
 
     p Center Midfielder
     select name="playerr9"
         - @players.each do |player|
-            -if player["player_position"] == "CM"
+            -if player["player_position"] == "CM" 
                 option value="#{player["player_name"]}" selected="selected" #{player["player_name"]} 
 
     p Striker
@@ -66,7 +66,7 @@ form action="/squad" method="post"
     p Striker
     select name="playerr11"
         - @players.each do |player|
-            -if player["player_position"] == "ST"
+            -if player["player_position"] == "ST" && player["player_name"] != params[:playerr10]
                 option value="#{player["player_name"]}" selected="selected" #{player["player_name"]} 
 
     
