@@ -14,7 +14,7 @@ def database()
 end
 
 def before_everything()
-    protected_routes = ['/everysquad','/squads/:id/delete','/squads/:id/update','/squads/:id/edit','/admin*','/everyplayer','/squad','/playersss']
+    protected_routes = ['/everysquad','/squads/:id/delete','/squads/:id/update','/squads/:id/edit','/admin*','/everyplayer','/squad','/playersss','huvudsida']
     login_routes = ['/login']
     if session[:tag] != nil && login_routes.include?(request.path_info)
         redirect('/huvudsida')

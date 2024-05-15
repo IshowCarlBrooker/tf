@@ -4,6 +4,7 @@ require 'slim'
 require 'sqlite3'
 require 'bcrypt'
 require 'sinatra/flash'
+require_relative 'model.rb'
 
 enable :sessions
 
@@ -11,79 +12,77 @@ get('/') do
   slim(:register)
 end
 
+#Ändrar så att man slipper lägga hela db=sqlite grejen, istället skriva db.execute direkt istället. Finns before everything funktion i model.rb, den kollar behörigheter innaan alla routes körs.
 
 before do
   db = database()
   before_everything()
 end
 
+# Vid error 404 ges en notis om att routen inte existerar (Error 404, man går till en route som inte existerar, undviker sinatra errors och redirectar)
 error 404 do
   flash[:notice] = "Routen existerar inte"
   redirect('/')
 end
 
-get('/teams/new') do
-  db = SQLite3::Database.new("db/oversikt.db")
-  db.results_as_hash = true
+get('/squad') do
+  db = database()
   @players = db.execute("SELECT * FROM playerstable")
   slim(:squadbuilder)
 end
 
-post('/teams/new') do
-  db = SQLite3::Database.new("db/oversikt.db")
-  db.results_as_hash = true 
+post('/squad') do
+  db = database()
   user_id = session[:id]
   team_name = params[:team_name]
 
   selected_players = (1..11).map { |i| params[:"playerr#{i}"] }
 
-
   if selected_players.uniq.length != selected_players.length
     flash[:notice] = "Du har valt samma spelare för flera positioner!"
-    redirect('/squad')
+    redirect('/everysquad')
   end
-
 
   if db.execute("SELECT id FROM teams WHERE team_name = ? AND user_id = ?", team_name, user_id) == []
     db.execute("INSERT INTO teams (team_name, user_id) VALUES (?, ?)", team_name, user_id)
   end
   
-
+  # Lägg till spelarna i laget i databasen
   i = 1
   while i <= 11 do
     player = params[:"playerr#{i}"]
     team_id = db.execute("SELECT id FROM teams WHERE team_name = ? AND user_id = ?", team_name, user_id).first["id"]
     player_id = db.execute("SELECT playerid FROM playerstable WHERE player_name = ?", player).first["playerid"]
-    db.execute("INSERT INTO player_team_rel (player_id, team_id) VALUES (?,?)", player_id, team_id)
+    player_position = db.execute("SELECT player_position FROM playerstable WHERE playerid = ?", player_id).first["player_position"]
+    db.execute("INSERT INTO player_team_rel (player_id, team_id, player_position) VALUES (?,?,?)", player_id, team_id, player_position)
     i += 1
   end
-  
-  redirect('/huvudsida')
+
+  # Efter att laget och spelarna har lagts till i databasen, omdirigera till huvudsidan
+  redirect('/protected/huvudsida')
 end
 
-get('/players/new') do
+get('/playersss') do
   slim(:playersida)
 end
 
-post('/players/new') do 
+post('/playersss') do 
+  db = database()
   player_name = params[:player_name]
   player_position = params[:position]
-  db = SQLite3::Database.new("db/oversikt.db")
   db.execute("INSERT INTO playerstable ( player_name, player_position) VALUES (?,?)", player_name, player_position)
   flash[:notice] =  "Spelaren är skapad!"
   redirect('/playersss')
 end
 
-get('/players/index') do
-  db = SQLite3::Database.new("db/oversikt.db")
-  db.results_as_hash = true
+get('/everyplayer') do
+  db = database()
   result = db.execute("SELECT * FROM playerstable")
   slim(:everyplayer, locals:{players:result})
 end
 
-get('/teams/index') do 
-  db = SQLite3::Database.new("db/oversikt.db")
-  db.results_as_hash = true
+get('/everysquad') do 
+  db = database()
   user_id = session[:id]
   @squads = db.execute("SELECT * FROM teams WHERE user_id = ?", user_id)
   @squads.each do |squad|
@@ -94,14 +93,15 @@ get('/teams/index') do
 end
 
 post('/squads/:id/delete') do
+  db = database()
   id = params[:id].to_i
-  db = SQLite3::Database.new("db/oversikt.db")
   db.execute("DELETE FROM teams WHERE id = ?",id)
+  db.execute("DELETE FROM player_team_rel where team_id = ?", id)
   redirect('/everysquad')
 end
 
 
-post('/teams/:id/edit') do
+post('/squads/:id/update') do
   db = database()
   squad_id = params[:id].to_i
   team_name = params[:team_name]
@@ -131,28 +131,12 @@ post('/teams/:id/edit') do
   redirect('/everysquad')
 end
 
-get('/squads/:id/edit') do
-  db = database()
-  user_id = session[:id].to_i
-  id = params[:id].to_i
-  user_squad_id = db.execute("SELECT user_id FROM teams WHERE id = ?", id).first
-  #Validering ifall det är rätt användare
-  if user_squad_id.nil? || user_id != user_squad_id[0]
-    redirect('/')
-  end
-  @players = db.execute("SELECT * FROM playerstable")
-  result_players = db.execute("SELECT player_name FROM playerstable")
-  result = db.execute("SELECT * FROM teams WHERE id = ?",id).first
-  slim(:"squadeditor",locals:{result:result,player_name:result_players})
-end
-
-
 
 get('/showlogin') do
   slim(:login)
 end
 
-get('/huvudsida') do
+get('/protected/huvudsida') do
   slim(:"main/index")
 end
 
@@ -179,7 +163,7 @@ post('/login') do
 
   if BCrypt::Password.new(pwdigest) == password 
     session[:id] = id
-    redirect('/huvudsida')
+    redirect('/protected/huvudsida')
   else 
     flash[:notice] = "Fel Lösenord"
     redirect('/showlogin')
@@ -209,6 +193,20 @@ get('/logout') do
   redirect('/showlogin')
 end
 
+get('/squads/:id/edit') do
+  db = database()
+  user_id = session[:id].to_i
+  id = params[:id].to_i
+  user_squad_id = db.execute("SELECT user_id FROM teams WHERE id = ?", id).first
+  #Validering ifall det är rätt användare
+  if user_squad_id.nil? || user_id != user_squad_id[0]
+    redirect('/')
+  end
+  @players = db.execute("SELECT * FROM playerstable")
+  result_players = db.execute("SELECT player_name FROM playerstable")
+  result = db.execute("SELECT * FROM teams WHERE id = ?",id).first
+  slim(:"squadeditor",locals:{result:result,player_name:result_players})
+end
 
 get('/admin') do
   slim(:"/admin/adminpage")
