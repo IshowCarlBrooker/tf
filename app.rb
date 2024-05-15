@@ -22,14 +22,14 @@ error 404 do
   redirect('/')
 end
 
-get('/squad') do
+get('/teams/new') do
   db = SQLite3::Database.new("db/oversikt.db")
   db.results_as_hash = true
   @players = db.execute("SELECT * FROM playerstable")
   slim(:squadbuilder)
 end
 
-post('/squad') do
+post('/teams/new') do
   db = SQLite3::Database.new("db/oversikt.db")
   db.results_as_hash = true 
   user_id = session[:id]
@@ -61,11 +61,11 @@ post('/squad') do
   redirect('/huvudsida')
 end
 
-get('/playersss') do
+get('/players/new') do
   slim(:playersida)
 end
 
-post('/playersss') do 
+post('/players/new') do 
   player_name = params[:player_name]
   player_position = params[:position]
   db = SQLite3::Database.new("db/oversikt.db")
@@ -74,14 +74,14 @@ post('/playersss') do
   redirect('/playersss')
 end
 
-get('/everyplayer') do
+get('/players/index') do
   db = SQLite3::Database.new("db/oversikt.db")
   db.results_as_hash = true
   result = db.execute("SELECT * FROM playerstable")
   slim(:everyplayer, locals:{players:result})
 end
 
-get('/everysquad') do 
+get('/teams/index') do 
   db = SQLite3::Database.new("db/oversikt.db")
   db.results_as_hash = true
   user_id = session[:id]
@@ -101,7 +101,7 @@ post('/squads/:id/delete') do
 end
 
 
-post('/squads/:id/update') do
+post('/teams/:id/edit') do
   db = database()
   squad_id = params[:id].to_i
   team_name = params[:team_name]
@@ -157,12 +157,17 @@ get('/huvudsida') do
 end
 
 post('/login') do
+  db = database()
   username = params[:username]
   password = params[:password]
-  db = SQLite3::Database.new('db/oversikt.db')
-  db.results_as_hash = true
   result = db.execute("SELECT * FROM users WHERE username = ?", username).first
 
+
+  if username == "ADMIN"
+      session[:tag] = "ADMIN"
+  else
+      session[:tag] = "USER"
+  end
 
   if result.nil?
     flash[:notice] =  "Användare finns inte"
@@ -183,23 +188,58 @@ end
 
 
 post('/users/new') do
+  db = database()
   username = params[:username]
   password = params[:password]
   password_confirm = params[:password_confirm]
 
   if (password == password_confirm)
     password_digest = BCrypt::Password.create(password)
-    db = SQLite3::Database.new('db/oversikt.db')
     db.execute("INSERT INTO users (username,pwdigest) VALUES (?,?)",username,password_digest)
-    flash[:notice] = "Användare skapad"
-    redirect('/showlogin')
-  else 
-    flash[:notice] = "Lösenorden matchar inte"
+    flash[:notice] = "Ditt konto har skapats"
+  else
+    flash[:notice] = "Ditt konto har inte skapats, något gick fel"
     redirect('/')
   end
+  redirect('/')
 end
 
 get('/logout') do
   session.clear
   redirect('/showlogin')
+end
+
+
+get('/admin') do
+  slim(:"/admin/adminpage")
+end
+
+get('/admin/adminsquad') do
+  db = database()
+  user_id = session[:id]
+  @squads = db.execute("SELECT * FROM teams")
+  @squads.each do |squad|
+  squad_id = squad["id"]
+  squad["players"] = db.execute("SELECT playerstable.player_name, playerstable.player_position FROM playerstable INNER JOIN player_team_rel ON playerstable.playerid = player_team_rel.player_id WHERE player_team_rel.team_id = ?", squad_id)
+  end
+  slim(:"/admin/adminsquad")
+end
+
+post('/admin/squads/:id/delete') do
+  id = params[:id].to_i
+  db = database()
+  db.execute("DELETE FROM teams WHERE id = ?",id)
+  db.execute("DELETE FROM player_team_rel WHERE team_id = ?",id)
+  redirect('/admin/adminsquad')
+end
+
+get('/admin/squads/:id/edit') do
+  db = database()
+  user_id = session[:id].to_i
+  id = params[:id].to_i
+  user_squad_id = db.execute("SELECT user_id FROM teams WHERE id = ?", id).first
+  @players = db.execute("SELECT * FROM playerstable")
+  result_players = db.execute("SELECT player_name FROM playerstable")
+  result = db.execute("SELECT * FROM teams WHERE id = ?",id).first
+  slim(:"squadeditor",locals:{result:result,player_name:result_players})
 end
