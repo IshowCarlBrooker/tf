@@ -1,3 +1,4 @@
+
 html lang="en"
   head
     meta charset="UTF-8"/
@@ -12,10 +13,10 @@ html lang="en"
         h1 SQUAD BUILDER
 
       - if session[:id]   
-        a href="/squad" Skapa ditt lag!
-        a href="/playersss" Skapa spelare!!!
-        a href="/everyplayer" Se alla spelare
-        a href="/everysquad" Se dina skapade lag
+        a href="/squad/new" Skapa ditt lag!
+        a href="/playersss/new" Skapa spelare!!!
+        a href="/everyplayer/" Se alla spelare
+        a href="/everysquad/" Se dina skapade lag
         a href="/logout" Logout
       
       -else

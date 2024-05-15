@@ -12,20 +12,17 @@ get('/') do
   slim(:register)
 end
 
-#Ändrar så att man slipper lägga hela db=sqlite grejen, istället skriva db.execute direkt istället. Finns before everything funktion i model.rb, den kollar behörigheter innaan alla routes körs.
-
 before do
   db = database()
   before_everything()
 end
 
-# Vid error 404 ges en notis om att routen inte existerar (Error 404, man går till en route som inte existerar, undviker sinatra errors och redirectar)
 error 404 do
   flash[:notice] = "Routen existerar inte"
   redirect('/')
 end
 
-get('/squad') do
+get('/squad/new') do
   db = database()
   @players = db.execute("SELECT * FROM playerstable")
   slim(:squadbuilder)
@@ -40,29 +37,27 @@ post('/squad') do
 
   if selected_players.uniq.length != selected_players.length
     flash[:notice] = "Du har valt samma spelare för flera positioner!"
-    redirect('/everysquad')
+    redirect('/squad/new')
   end
 
   if db.execute("SELECT id FROM teams WHERE team_name = ? AND user_id = ?", team_name, user_id) == []
     db.execute("INSERT INTO teams (team_name, user_id) VALUES (?, ?)", team_name, user_id)
+    flash[:notice] = "Ett lag har skapats"
   end
   
-  # Lägg till spelarna i laget i databasen
   i = 1
   while i <= 11 do
     player = params[:"playerr#{i}"]
     team_id = db.execute("SELECT id FROM teams WHERE team_name = ? AND user_id = ?", team_name, user_id).first["id"]
     player_id = db.execute("SELECT playerid FROM playerstable WHERE player_name = ?", player).first["playerid"]
-    player_position = db.execute("SELECT player_position FROM playerstable WHERE playerid = ?", player_id).first["player_position"]
-    db.execute("INSERT INTO player_team_rel (player_id, team_id, player_position) VALUES (?,?,?)", player_id, team_id, player_position)
+    db.execute("INSERT INTO player_team_rel (player_id, team_id) VALUES (?,?)", player_id, team_id)
     i += 1
   end
-
-  # Efter att laget och spelarna har lagts till i databasen, omdirigera till huvudsidan
-  redirect('/protected/huvudsida')
+  
+  redirect('/huvudsida')
 end
 
-get('/playersss') do
+get('/playersss/new') do
   slim(:playersida)
 end
 
@@ -72,16 +67,16 @@ post('/playersss') do
   player_position = params[:position]
   db.execute("INSERT INTO playerstable ( player_name, player_position) VALUES (?,?)", player_name, player_position)
   flash[:notice] =  "Spelaren är skapad!"
-  redirect('/playersss')
+  redirect('/playersss/new')
 end
 
-get('/everyplayer') do
+get('/everyplayer/') do
   db = database()
   result = db.execute("SELECT * FROM playerstable")
   slim(:everyplayer, locals:{players:result})
 end
 
-get('/everysquad') do 
+get('/everysquad/') do 
   db = database()
   user_id = session[:id]
   @squads = db.execute("SELECT * FROM teams WHERE user_id = ?", user_id)
@@ -97,7 +92,7 @@ post('/squads/:id/delete') do
   id = params[:id].to_i
   db.execute("DELETE FROM teams WHERE id = ?",id)
   db.execute("DELETE FROM player_team_rel where team_id = ?", id)
-  redirect('/everysquad')
+  redirect('/everysquad/')
 end
 
 
@@ -108,27 +103,22 @@ post('/squads/:id/update') do
 
   selected_players = (1..11).map { |i| params[:"playerr#{i}"] }
 
-  # Kontrollera om det finns dubbletter i listan över valda spelare
   if selected_players.uniq.length != selected_players.length
     flash[:notice] = "Du har valt samma spelare för flera positioner!"
-    redirect('/everysquad')
+    redirect('/everysquad/')
   end
 
   db.execute("UPDATE teams SET team_name = ? WHERE id = ?", team_name, squad_id)
-  #Clear existing player assignments for the team
   db.execute("DELETE FROM player_team_rel WHERE team_id = ?", squad_id)
 
-  #Update player positions one by one
   (1..11).each do |i|
     player_name = params[:"playerr#{i}"]
     player_id = db.execute("SELECT playerid FROM playerstable WHERE player_name = ?", player_name).first["playerid"]
-    player_position = db.execute("SELECT player_position FROM playerstable WHERE playerid = ?", player_id).first["player_position"]
 
-    #Insert player position if it doesn't already exist
-    db.execute("INSERT INTO player_team_rel (player_id, team_id, player_position) VALUES (?, ?, ?)", player_id, squad_id, player_position)
+    db.execute("INSERT INTO player_team_rel (player_id, team_id) VALUES (?, ?)", player_id, squad_id,)
   end
 
-  redirect('/everysquad')
+  redirect('/everysquad/')
 end
 
 
@@ -136,7 +126,7 @@ get('/showlogin') do
   slim(:login)
 end
 
-get('/protected/huvudsida') do
+get('/huvudsida') do
   slim(:"main/index")
 end
 
@@ -145,13 +135,6 @@ post('/login') do
   username = params[:username]
   password = params[:password]
   result = db.execute("SELECT * FROM users WHERE username = ?", username).first
-
-
-  if username == "ADMIN"
-      session[:tag] = "ADMIN"
-  else
-      session[:tag] = "USER"
-  end
 
   if result.nil?
     flash[:notice] =  "Användare finns inte"
@@ -163,11 +146,22 @@ post('/login') do
 
   if BCrypt::Password.new(pwdigest) == password 
     session[:id] = id
-    redirect('/protected/huvudsida')
+    p "session id är:"
+    p session[:id]
+    p id
+    if username == "carlbrooker1234"
+      session[:tag] = "ADMIN"
+    else
+      session[:tag] = "USER"
+    end
+    redirect('/huvudsida')
   else 
     flash[:notice] = "Fel Lösenord"
     redirect('/showlogin')
   end
+  p "session id är:"
+  p session[:id]
+  p id
 end
 
 
@@ -198,7 +192,6 @@ get('/squads/:id/edit') do
   user_id = session[:id].to_i
   id = params[:id].to_i
   user_squad_id = db.execute("SELECT user_id FROM teams WHERE id = ?", id).first
-  #Validering ifall det är rätt användare
   if user_squad_id.nil? || user_id != user_squad_id[0]
     redirect('/')
   end
@@ -212,7 +205,7 @@ get('/admin') do
   slim(:"/admin/adminpage")
 end
 
-get('/admin/adminsquad') do
+get('/admin/adminsquad/') do
   db = database()
   user_id = session[:id]
   @squads = db.execute("SELECT * FROM teams")
@@ -223,15 +216,15 @@ get('/admin/adminsquad') do
   slim(:"/admin/adminsquad")
 end
 
-post('/admin/squads/:id/delete') do
+post('/admin/adminsquad/squads/:id/delete') do
   id = params[:id].to_i
   db = database()
   db.execute("DELETE FROM teams WHERE id = ?",id)
   db.execute("DELETE FROM player_team_rel WHERE team_id = ?",id)
-  redirect('/admin/adminsquad')
+  redirect('/admin/adminsquad/')
 end
 
-get('/admin/squads/:id/edit') do
+get('/admin/adminsquad/squads/:id/edit') do
   db = database()
   user_id = session[:id].to_i
   id = params[:id].to_i

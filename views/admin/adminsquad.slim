@@ -6,7 +6,7 @@ ul
         h2  #{squad["team_name"]}
         
         form method="POST" action="squads/#{squad['id']}/delete"
-              input type="submit" value="Delete"
+          input type="submit" value="Delete"
         a href="squads/#{squad['id']}/edit" Uppdatera
 
         - squad["players"].each do |player|
