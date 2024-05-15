@@ -1,0 +1,74 @@
+form action="/squads/#{result['id']}/update" method="post"
+
+    p Goalkeeper
+    select name="playerr1"
+       - @players.each do |player|
+            -if player["player_position"] == "GK"
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+
+    p Leftback
+    select name="playerr2"
+        - @players.each do |player|
+            -if player["player_position"] == "LB"
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+    
+    p Centerback
+    select name="playerr3"
+        - @players.each do |player|
+            -if player["player_position"] == "CB"
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+    
+    p Centerback
+    select name="playerr4"
+        - @players.each do |player|
+            -if player["player_position"] == "CB" 
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+    
+    p Rightback
+    select name="playerr5"
+        - @players.each do |player|
+            -if player["player_position"] == "RB"
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+
+    p Left Midfielder
+    select name="playerr6"
+        - @players.each do |player|
+            -if player["player_position"] == "LM"
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+
+
+    p Right Midfielder
+    select name="playerr7"
+        - @players.each do |player|
+            -if player["player_position"] == "RM"
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+
+    p Center Midfielder
+    select name="playerr8"
+        - @players.each do |player|
+            -if player["player_position"] == "CM" 
+                option value="#{player["player_name"]}"  #{player["player_name"]} 
+
+    p Center Midfielder
+    select name="playerr9"
+        - @players.each do |player|
+            -if player["player_position"] == "CM" 
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+
+    p Striker
+    select name="playerr10"
+        - @players.each do |player|
+            -if player["player_position"] == "ST"
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+
+    p Striker
+    select name="playerr11"
+        - @players.each do |player|
+            -if player["player_position"] == "ST" && player["player_name"] != params[:playerr10]
+                option value="#{player["player_name"]}" #{player["player_name"]} 
+
+    
+
+    input type="text" name="team_name" value="#{result['team_name']}"
+
+    input type="submit" value="Edit!"
