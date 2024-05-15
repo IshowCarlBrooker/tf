@@ -11,6 +11,17 @@ get('/') do
   slim(:register)
 end
 
+
+before do
+  db = database()
+  before_everything()
+end
+
+error 404 do
+  flash[:notice] = "Routen existerar inte"
+  redirect('/')
+end
+
 get('/squad') do
   db = SQLite3::Database.new("db/oversikt.db")
   db.results_as_hash = true
